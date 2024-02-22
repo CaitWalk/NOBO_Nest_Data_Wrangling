@@ -19,22 +19,28 @@ library(MCMCglmm)
 
 
 #function to calculate the number of chicks initially marked from eggshell genotyping
-marked <- function(N, fn, ns, cs, hr, gs){
+marked <- function(N, fn, ns, cs, ha, gs){
   N * fn * ns * cs * hr * gs
+  breeding_sample_size = rpois(50, 97)
   nest_success_prob = 0.5
+  hatch_prob = 0.85
+  
+  
   
   fn = rpois(breeding_sample_size, 1.1)
-  nest_success = rbinom(fn, 1, nest_success_prob)
-  clutch_size = rpois(fn, 12)
+  ns = rbinom(fn, 1, nest_success_prob) 
+  cs = rpois(fn, 12) 
+  ha = rbinom(ns, cs, hatch_prob)
+  gs = rbinom(ns, ha, 0.95)
   
-
- 
-   #######
+  print(ha)
+  
+  #######
   # N = represents the number of females alive at the start of the breeding season
   # fn = represents the probability that a female nests
   # ns = represents the probability that a nest is successful
   # cs = is the average clutch size
-  # hr = represents the hatch rate i.e. the number of eggs that hatch out/total successful clutch count
+  # ha = the number of eggs that hatch out/total successful clutch count
   # gs = is the genotyping success rate for eggshells 
 }
 
@@ -74,3 +80,8 @@ rpois(n=50, lambda = lambda) #50 random numbers from poisson distribution with m
 #clutch size range from 1-26
 # mu = 12.5237
 # sd = 3.1871
+
+
+
+
+
