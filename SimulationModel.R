@@ -7,67 +7,10 @@ library(corpcor)
 library(cubature)
 library(MCMCglmm)
 
-########creating a function in R
-#   Function_name <- function(parameter){
-#           function body   
-#   }
-#####where:
-# function_name is the name of the function object stored in the R environment and used for calling that function
-# parameters/formal arguments = variables that we set/change
-# function body = set of commands inside curly brackets run in predefined order every time we call the function
-# i.e. what we need the function to do 
-
-
-#function to calculate the number of chicks initially marked from eggshell genotyping
-marked <- function(N, fn, ns, cs, ha, gs){
-  N * fn * ns * cs * hr * gs
-  breeding_sample_size = rpois(50, 97)
-  nest_success_prob = 0.5
-  hatch_prob = 0.85
-  
-  
-  
-  fn = rpois(breeding_sample_size, 1.1)
-  ns = rbinom(fn, 1, nest_success_prob) 
-  cs = rpois(fn, 12) 
-  ha = rbinom(ns, cs, hatch_prob)
-  gs = rbinom(ns, ha, 0.95)
-  
-  print(ha)
-  
-  #######
-  # N = represents the number of females alive at the start of the breeding season
-  # fn = represents the probability that a female nests
-  # ns = represents the probability that a nest is successful
-  # cs = is the average clutch size
-  # ha = the number of eggs that hatch out/total successful clutch count
-  # gs = is the genotyping success rate for eggshells 
-}
-
-# function to calculate the number of marked individuals recaptured in the fall 
-recap <- function(M, phi, p){
-  set.seed(123)
-  y = rbinom(M, 1, p * phi)
-  print(y)
-  #M * phi * p
-  
-  ############
-  # M = number of individual chicks marked at time of hatch i.e. successful eggshell genotype
-  # phi = probability a hatched chick survives to the fall
-  # p = probability a chicks is captured in the fall 
-}
-
-recap(100,0.5,0.20)
-
-
-
 #number of females range from 82 - 115 at April 15 
 # n = number of samples
-lambda = 97 #average 
-std = 11.76 #standard deviation
-
-rtnorm(n = 50, mean = mu, sd = std, lower = 82, upper = 115) #normal distribution with upper and lower limits
-rpois(n=50, lambda = lambda) #50 random numbers from poisson distribution with mean at 97
+#mean = 97 
+#standard deviations= 11.76 
 
 # nests/hen range from 0.6100 to 0.9100
 #mu <- 0.7825
@@ -81,7 +24,51 @@ rpois(n=50, lambda = lambda) #50 random numbers from poisson distribution with m
 # mu = 12.5237
 # sd = 3.1871
 
+########creating a function in R
+#   Function_name <- function(parameter){
+#           function body   
+#   }
+#####where:
+# function_name is the name of the function object stored in the R environment and used for calling that function
+# parameters/formal arguments = variables that we set/change
+# function body = set of commands inside curly brackets run in predefined order every time we call the function
+# i.e. what we need the function to do 
+
+#  N * fn * ns * cs * ha * gs
+
+  # N = represents the number of females alive at the start of the breeding season
+  # fn = represents the probability that a female nests
+  # ns = represents the probability that a nest is successful
+  # cs = is the average clutch size
+  # ha = the number of eggs that hatch out/total successful clutch count
+  # gs = is the genotyping success rate for eggshells 
+
+#################################################################################
+
+breeding_sample_size = 100
+nest_success_prob = 0.5
+hatch_prob = 0.85
+genotype_success = 0.95
+capture_prob = 0.15
 
 
+fn = numeric()
+ns = numeric()
+cs = numeric()
+chicks = numeric()
+marked = numeric()
+recap = numeric()
+af = numeric()
 
+for (i in 1:breeding_sample_size) {
+  fn [i] = rpois(1,1.1)     #nests/female
+  ns [i] = rbinom(1, fn[i], nest_success_prob)  #nest success
+  cs = 12    #clutch size
+  chicks [i] = rbinom(1, ns[i] * cs, hatch_prob)  #number of chicks hatched
+  marked [i] = rbinom(1, chicks[i], genotype_success)   #number of eggs genotyped
+  af [i] = rbinom(1, marked[i], 0.4)    #number of chicks alive in the fall
+  recap [i] = rbinom(1, af[i], capture_prob)    #number recaptured in the fall
+}
+
+print(recap)
 
