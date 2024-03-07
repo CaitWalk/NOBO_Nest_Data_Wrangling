@@ -44,6 +44,7 @@ library(MCMCglmm)
   # gs = is the genotyping success rate for eggshells 
 
 #################################################################################
+num.iterations <- 10000    #number of times to run the code 
 
 breeding_sample_size = 100
 nest_success_prob = 0.5
@@ -51,24 +52,32 @@ hatch_prob = 0.85
 genotype_success = 0.95
 capture_prob = 0.15
 
+total_recap = numeric()
 
-fn = numeric()
-ns = numeric()
-cs = numeric()
-chicks = numeric()
-marked = numeric()
-recap = numeric()
-af = numeric()
-
-for (i in 1:breeding_sample_size) {
-  fn [i] = rpois(1,1.1)     #nests/female
-  ns [i] = rbinom(1, fn[i], nest_success_prob)  #nest success
-  cs = 12    #clutch size
-  chicks [i] = rbinom(1, ns[i] * cs, hatch_prob)  #number of chicks hatched
-  marked [i] = rbinom(1, chicks[i], genotype_success)   #number of eggs genotyped
-  af [i] = rbinom(1, marked[i], 0.4)    #number of chicks alive in the fall
-  recap [i] = rbinom(1, af[i], capture_prob)    #number recaptured in the fall
+# loop to run recapture loop 
+for (iterations in 1:num.iterations) {
+  fn = numeric()
+  ns = numeric()
+  cs = numeric()
+  chicks = numeric()
+  marked = numeric()
+  recap = numeric()
+  af = numeric()
+  
+  #loop to calculate recapture numbers
+  for (i in 1:breeding_sample_size) {
+    fn [i] = rpois(1,1.1)     #nests/female
+    ns [i] = rbinom(1, fn[i], nest_success_prob)  #nest success
+    cs [i] = rpois(1, 12)    #clutch size
+    chicks [i] = rbinom(1, ns[i] * cs, hatch_prob)  #number of chicks hatched
+    marked [i] = rbinom(1, chicks[i], genotype_success)   #number of eggs genotyped
+    af [i] = rbinom(1, marked[i], 0.4)    #number of chicks alive in the fall
+    recap [i] = rbinom(1, af[i], capture_prob)    #number recaptured in the fall
+  }
+  
+  total_recap[iterations] = sum(recap)
 }
 
-print(recap)
+print(total_recap)
+mean(total_recap)
 
