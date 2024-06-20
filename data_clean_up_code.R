@@ -4,6 +4,10 @@ library(dplyr)
 library(lubridate)
 library(tidyverse)
 
+#Excel Files
+# Capture History 2000-2017 Fall
+# TT Data 2017-2023
+
 Capture_History_2000_2017_Fall$`1st_Age`[Capture_History_2000_2017_Fall$`1st_Age`== 'immature'] <- 'juvenile' ##replace immature with juvenile
 
 ############################################################################################
@@ -32,13 +36,6 @@ juv_cap$'6th_CaptureDate' <- as.Date(juv_cap$'6th_CaptureDate')
 
 View(juv_cap)
 #############################################################################################################
-
-###NOT IMPORTANT
-juv_cap$`1st_ImmAge` <- as.numeric(juv_cap$`1st_ImmAge`)  ##convert from character to numeric
-
-juv_cap <- juv_cap %>% mutate_if(is.logical, as.character) ##convert _BirdIDrecap from logical to character
-
-########################################################################################
 
 ##Convert data from wide to long format i.e. only one capture per row
 long_test <- juv_cap %>%
@@ -188,6 +185,7 @@ all_count_data <- all_juv_fall %>%
   group_by(Year, Month) %>%
   summarize(Count = n())
 
+#all years number of hatched chicks/month
 ggplot(all_count_data, aes(x = as.numeric(Year), y = Count, color = Month, group = Month)) +
   geom_point(position = position_dodge(width = 0.5)) +
   geom_line(position = position_dodge(width = 0.5)) +
@@ -201,7 +199,7 @@ ggplot(all_count_data, aes(x = as.numeric(Year), y = Count, color = Month, group
   theme(axis.text.x = element_text(angle = 90, hjust = 1))+
   theme_minimal()
 
-
+#proportion of chicks hatched/month based on total number
 ggplot(hatch_prop, aes(x = Month, y = props, group = Year, color = factor(Year))) +
   geom_line() +
   geom_point() +
@@ -216,7 +214,7 @@ csum <- hatch_prop %>%
         mutate(cumsum = cumsum(cnt), year_tot = sum(cnt), 
                cumprop = cumsum/year_tot)
 
-
+#cumulative proportion of hatches/month 
 ggplot(csum, aes(x = Month, y = cumprop, group = Year, color = factor(Year))) +
   geom_line() +
   geom_point() +
