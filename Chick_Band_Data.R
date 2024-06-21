@@ -9,6 +9,7 @@ library(tidyverse)
 # ChickcaptureData_No_dates
 # BroodCaptures2018-2023
 
+
 ChickCaptureData <- ChickCaptureData_No_Dates
 
 #pivot the data so that each capture even is its own row
@@ -62,21 +63,32 @@ BroodCaptures2018_2023 <- BroodCaptures2018_2023%>%
 
 colnames(BroodCaptures2018_2023)[12] <- "Condition"
 
-
+##########################################################################################
 #merge the 2 df into a single df that contains all chicks captured
 tagged_chicks <- merge(ChickCaptureData, BroodCaptures2018_2023, 
                        by = c("Capture Date", "Chick ID"), all = TRUE)
 
 colnames(tagged_chicks)[8] <- "Weight.x"
 colnames(tagged_chicks)[18] <- "Weight.y"
+colnames(tagged_chicks)[11] <- "Comment.x"
+colnames(tagged_chicks)[22] <- "Comment.y"
 
+#mutate = create new column
 tagged_chicks <- tagged_chicks %>%
-  mutate(Weight = coalesce(Weight.x, Weight.y), #combine weight columns
-         Condition = ifelse(is.na(Condition.x), Condition.y, Condition.x)) #combines Condition 
+  mutate(Weight = coalesce(Weight.x, Weight.y), #combine weight columns 
+         Condition = ifelse(is.na(Condition.x), Condition.y, Condition.x), #combines Condition columns
+         Comments = coalesce(Comment.x, Comment.y))
 
-tagged_chicks <- select(tagged_chicks,-starts_with("Weight."), -starts_with("Condition.")) #remove the excess columns created in the merge
+tagged_chicks <- select(tagged_chicks,-starts_with("Weight."), 
+                        -starts_with("Condition."), 
+                        -starts_with("Comment.")) #remove the excess columns created in the merge
 
+#remove columns so its just capture date, chick ID, brood ID, morphomerics, and comments
+tagged_chicks <- tagged_chicks[,-c(3,5,6,7,9,10,11,12,13,17,18,19,20,21)]
+                                   
+tagged_chicks <- tagged_chicks %>% relocate("Chick Radio", .before = "Comments")
 
-
+#data not recorded on broodcapture_data BUT found date with band number from capture_history
+tagged_chicks[c(4019, 4020, 4021), "Capture Date"] <- '2015-07-28'
 
 
