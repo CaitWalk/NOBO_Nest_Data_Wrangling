@@ -64,7 +64,7 @@ BroodCaptures2018_2023 <- BroodCaptures2018_2023%>%
 colnames(BroodCaptures2018_2023)[12] <- "Condition"
 
 ##########################################################################################
-#merge the 2 df into a single df that contains all chicks captured
+#merge the 2 df into a single df that contains all chicks captured 
 tagged_chicks <- merge(ChickCaptureData, BroodCaptures2018_2023, 
                        by = c("Capture Date", "Chick ID"), all = TRUE)
 
@@ -91,4 +91,89 @@ tagged_chicks <- tagged_chicks %>% relocate("Chick Radio", .before = "Comments")
 #data not recorded on broodcapture_data BUT found date with band number from capture_history
 tagged_chicks[c(4019, 4020, 4021), "Capture Date"] <- '2015-07-28'
 
+##############################################################################################
+##############################################################################################
+#                           cHICK RECAPTURE DATA
+#EXCEL FILES
+# Capture History 2000-2017 Wing Only
+# TT Data 2017-2023 (has just fall trap data)
 
+################ 2000-2016 data
+Wing_Data <- Capture_History_2000_2017_Wing_Only[,-c(1,6,8,9,13,14,16,17,21,22,25,26,30,31,34,35,38,39,41,42,45,46,48,49)]
+Wing_Data <- Wing_Data[,-c(2,3,4,13,18,28,29,31,32,35,36,37,38,39,40,41,42,43)]
+
+Wing_Data <- Wing_Data %>% #change date format
+  mutate(`1st Capture Date`= as.Date(`1st Capture Date`, format="%Y/%m/%d")) %>%
+  mutate(`2nd Capture Date`= as.Date(`2nd Capture Date`, format="%Y/%m/%d")) %>%
+  mutate(`3rd Capture Date`= as.Date(`3rd Capture Date`, format="%Y/%m/%d")) %>%
+  mutate(`4th Capture Date`= as.Date(`4th Capture Date`, format="%Y/%m/%d")) %>%
+  mutate(`5th Capture Date`= as.Date(`5th Capture Date`, format="%Y/%m/%d")) %>%
+  mutate(`6th Capture Date`= as.Date(`6th Capture Date`, format="%Y/%m/%d")) %>%
+  mutate(`7th Capture Date`= as.Date(`7th Capture Date`, format="%Y/%m/%d")) %>%
+  filter(year(`1st Capture Date`) !=2017) #remove 2017 data since incomplete frm this df
+
+recaptures <- Wing_Data %>% drop_na(`2nd Capture Date`) #only chicks that were recaptured at least once
+
+recaptures <- recaptures %>% 
+  pivot_longer(
+    cols = starts_with(c('1st ', '2nd ', '3rd ', '4th ', '5th ', '6th ', '7th ')),
+    names_to = c("capture", '.value'),
+    names_sep = ' ',
+    values_drop_na = TRUE
+  )
+# Warning message:
+# Expected 2 pieces. Additional pieces discarded in 10 rows [1, 4, 5, 8, 9, 12, 13, 16, 19, 22].
+
+recaptures$Month <- lubridate::month(recaptures$Capture)
+recaptures <- recaptures%>% relocate(Month, .before = Capture)
+
+recaptures <- recaptures %>% filter(capture != "1st") #remove brood captures
+
+
+################# 2017-2023 data
+fall_recap <- TT_Data_2017_2023 %>% drop_na(Additional_BandType) #2017-2023 wing recaptures
+fall_recap <- fall_recap %>% mutate(CaptureDate = as.Date(CaptureDate, format="%Y/%m/%d"))
+
+fall_recap$Year <- lubridate::year(fall_recap$CaptureDate)
+fall_recap <- fall_recap %>% relocate('Year', .after = `New Recap`)
+
+fall_recap <- fall_recap%>% #removed bird that were caught multiple times 
+  distinct(Band_ID, .keep_all = TRUE)
+fall_recap <- fall_recap%>% #removed bird that were caught multiple times in the same year
+  distinct(Band_ID, Year, .keep_all = TRUE)
+
+
+
+############################################################################################
+############################################################################################
+################  TRAP NIGHTS
+
+#EXCEL FILES
+# Capture History 2000-2017 Fall 
+# TT Data 2017-2023 (has just fall trap data)
+
+Capture_History_2000_2017_Fall <-  Capture_History_2000_2017_Fall %>%
+  mutate(`1st_CaptureDate` = as.Date(`1st_CaptureDate`, format="%Y/%m/%d"))
+
+TT_A <- select(Capture_History_2000_2017_Fall, c('Bird_ID', '1st_CaptureDate'))
+colnames(TT_A)[2] <- "CaptureDate"
+TT_A <- TT_A %>% filter(year(`CaptureDate`) != 2017) ## remove data from year 2017
+
+TT_B <- select(TT_Data_2017_2023, c('Band_ID', 'CaptureDate'))
+colnames(TT_B)[1] <- "Bird_ID"
+
+#create dataframe of all captured fall birds and remove summer months captures
+fall_trap_data <- rbind(TT_A, TT_B)
+fall_trap_data <- fall_trap_data %>% 
+  mutate(CaptureDate = as.Date(CaptureDate, format = "%Y/%m/%d")) %>%
+  filter(month(CaptureDate) != 06)%>%
+  filter(month(CaptureDate) != 07)%>%
+  filter(month(CaptureDate) != 08)%>%
+  filter(month(CaptureDate) != 09)
+fall_trap_data$Year <- lubridate::year(fall_trap_data$CaptureDate)
+
+
+fall_trap_nights <- fall_trap_data %>% #number of trap nights 
+  distinct(CaptureDate, .keep_all = TRUE)
+fall_trap_indiv <- fall_trap_data %>% #number of individuals trapped
+  distinct(Bird_ID, Year, .keep_all = TRUE)
