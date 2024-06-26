@@ -31,7 +31,7 @@ for (iterations in 1:num.iterations) {
   ns = numeric()
   cs = numeric()
   chicks = numeric()
-  ic = numeric()  #initical capture
+  ic= numeric()  #initical capture
   recap = numeric()
   af = numeric()
   
@@ -50,70 +50,80 @@ for (iterations in 1:num.iterations) {
 }
 
 
-print(marked)
 mean(total_recap)
 sum(ic)
 #################################################################################
-n.occasions = 3
-phi = 0.45
-p = 0.20 #recapture probability 
-marked = sum(ic)  #initally captured i.e marked eggshells
+# Define parameter values
+n.occasions <- 3                   # Number of capture occasions
+marked <- 315   # number of ic from above code (cant find a way to link btw code--hard code the number in)
+phi <- rep(0.45, n.occasions-1)
+p <- rep(0.2, n.occasions-1)
 
-#define matrices with survival and recapture prob
-PHI <- matrix(phi, ncol = n.occasions - 1, nrow = marked)
-P <- matrix(p, ncol = n.occasions - 1, nrow = marked)
+# Define matrices with survival and recapture probabilities
+PHI <- matrix(phi, ncol = n.occasions-1, nrow = sum(marked))
+P <- matrix(p, ncol = n.occasions-1, nrow = sum(marked))
 
-
-# Define function to simulate a capture-history (CH) matrix
-simul.cjs <- function(PHI, P, marked, n.occasions){
-  CH <- matrix(0, ncol = n.occasions, nrow = marked)
- 
-   # Define a vector with the occasion of marking
-  mark.occ <- rep(1:marked, each = marked)
-  
-   # Fill the CH matrix
-  for (i in 1:marked){
+simul.cjs <- function(PHI, P, marked){
+  n.occasions <- dim(PHI)[2] + 1
+  CH <- matrix(0, ncol = n.occasions, nrow = sum(marked))
+  # Define a vector with the occasion of marking
+  mark.occ <- rep(1:length(marked), marked[1:length(marked)])
+  # Fill the CH matrix
+  for (i in 1:sum(marked)){
     CH[i, mark.occ[i]] <- 1       # Write an 1 at the release occasion
     if (mark.occ[i]==n.occasions) next
     for (t in (mark.occ[i]+1):n.occasions){
       # Bernoulli trial: does individual survive occasion?
-      sur <- rbinom(1, 1, PHI[i, t - 1])
+      sur <- rbinom(1, 1, PHI[i,t-1])
       if (sur==0) break		# If dead, move to next individual 
       # Bernoulli trial: is individual recaptured? 
-      rp <- rbinom(1, 1, P[i, t - 1])
+      rp <- rbinom(1, 1, P[i,t-1])
       if (rp==1) CH[i,t] <- 1
     } #t
   } #i
   return(CH)
 }
 
-simul.cjs(phi, p, marked, n.occasions)
+# Execute function
+CH <- simul.cjs(PHI, P, marked)
 
-n.occasions <- dim(PHI)[2] + 1
 
 ###################################################################
-#origingal function from internet
+#Bayesian population analysis using WinBUGS: a hierachical perspective
+#function from internet
+#https://www.vogelwarte.ch/modx/assets/files/publications/BPA/BPA%20with%20JAGS.txt
+
+# Define parameter values
+n.occasions <- 6                   # Number of capture occasions
+marked <- rep(50, n.occasions-1)   # Annual number of newly marked individuals
+phi <- rep(0.65, n.occasions-1)
+p <- rep(0.4, n.occasions-1)
+
+# Define matrices with survival and recapture probabilities
+PHI <- matrix(phi, ncol = n.occasions-1, nrow = sum(marked))
+P <- matrix(p, ncol = n.occasions-1, nrow = sum(marked))
+
 # Define function to simulate a capture-history (CH) matrix
-#simul.cjs <- function(PHI, P, marked){
-  #n.occasions <- dim(PHI)[2] + 1
- # CH <- matrix(0, ncol = n.occasions, nrow = sum(marked))
+simul.cjs <- function(PHI, P, marked){
+  n.occasions <- dim(PHI)[2] + 1
+  CH <- matrix(0, ncol = n.occasions, nrow = sum(marked))
   # Define a vector with the occasion of marking
- # mark.occ <- rep(1:length(marked), marked[1:length(marked)])
+  mark.occ <- rep(1:length(marked), marked[1:length(marked)])
   # Fill the CH matrix
-  #for (i in 1:sum(marked)){
-    #CH[i, mark.occ[i]] <- 1       # Write an 1 at the release occasion
-   # if (mark.occ[i]==n.occasions) next
-   # for (t in (mark.occ[i]+1):n.occasions){
+  for (i in 1:sum(marked)){
+    CH[i, mark.occ[i]] <- 1       # Write an 1 at the release occasion
+    if (mark.occ[i]==n.occasions) next
+    for (t in (mark.occ[i]+1):n.occasions){
       # Bernoulli trial: does individual survive occasion?
-    #  sur <- rbinom(1, 1, PHI[i,t-1])
-   #   if (sur==0) break		# If dead, move to next individual 
+      sur <- rbinom(1, 1, PHI[i,t-1])
+      if (sur==0) break		# If dead, move to next individual 
       # Bernoulli trial: is individual recaptured? 
-    #  rp <- rbinom(1, 1, P[i,t-1])
-   #   if (rp==1) CH[i,t] <- 1
-  #  } #t
-#  } #i
-#  return(CH)
-#}
-#simul.cjs(phi, p, marked)
-#Error in matrix(0, ncol = n.occasions, nrow = sum(marked)) : 
-  #invalid 'ncol' value (too large or NA)
+      rp <- rbinom(1, 1, P[i,t-1])
+      if (rp==1) CH[i,t] <- 1
+    } #t
+  } #i
+  return(CH)
+}
+
+# Execute function
+CH <- simul.cjs(PHI, P, marked)
