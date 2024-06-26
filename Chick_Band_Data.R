@@ -155,11 +155,12 @@ fall_recap <- fall_recap%>% #removed bird that were caught multiple times in the
 Capture_History_2000_2017_Fall <-  Capture_History_2000_2017_Fall %>%
   mutate(`1st_CaptureDate` = as.Date(`1st_CaptureDate`, format="%Y/%m/%d"))
 
-TT_A <- select(Capture_History_2000_2017_Fall, c('Bird_ID', '1st_CaptureDate'))
+TT_A <- select(Capture_History_2000_2017_Fall, c('Bird_ID', '1st_CaptureDate', '1st_Age'))
 colnames(TT_A)[2] <- "CaptureDate"
+colnames(TT_A)[3] <- "Age"
 TT_A <- TT_A %>% filter(year(`CaptureDate`) != 2017) ## remove data from year 2017
 
-TT_B <- select(TT_Data_2017_2023, c('Band_ID', 'CaptureDate'))
+TT_B <- select(TT_Data_2017_2023, c('Band_ID', 'CaptureDate', 'Age'))
 colnames(TT_B)[1] <- "Bird_ID"
 
 #create dataframe of all captured fall birds and remove summer months captures
@@ -172,8 +173,26 @@ fall_trap_data <- fall_trap_data %>%
   filter(month(CaptureDate) != 09)
 fall_trap_data$Year <- lubridate::year(fall_trap_data$CaptureDate)
 
+fall_trap_data$Age[fall_trap_data$Age == 'J'] <- 'juvenile'
+fall_trap_data$Age[fall_trap_data$Age == 'A'] <- 'Adult'
+fall_trap_data$Age[fall_trap_data$Age == 'adult'] <- 'Adult'
+fall_trap_data <- fall_trap_data %>% filter(Age != 'N') #remove dead trapped birds
 
 fall_trap_nights <- fall_trap_data %>% #number of trap nights 
   distinct(CaptureDate, .keep_all = TRUE)
 fall_trap_indiv <- fall_trap_data %>% #number of individuals trapped
   distinct(Bird_ID, Year, .keep_all = TRUE)
+
+age_ratio <- fall_trap_data %>%
+  group_by(Year, Age) %>%
+  summarize(Count = n())
+
+
+ggplot(age_ratio, aes(x = Year, y = Count, fill = Age))+
+  geom_col(position = position_dodge(0.5)) +
+  scale_x_continuous(breaks = seq(min(2000), max(2023), by = 2),
+                     labels = seq(min(2000), max(2023), by= 2)) +
+  geom_text(aes(label = Count, group = Age), 
+            position = position_dodge(0.5),
+            vjust = -0.3, size = 2.5)
+  
