@@ -3,6 +3,11 @@ library(tidyr)
 library(dplyr)
 library(lubridate)
 library(tidyverse)
+library(readxl)
+
+##############################################################################################
+##############################################################################################
+#                           cHICKS Tagged DATA
 
 #Excel files:
 # Brood_Info_2000_2017
@@ -91,6 +96,7 @@ tagged_chicks <- tagged_chicks %>% relocate("Chick Radio", .before = "Comments")
 #data not recorded on broodcapture_data BUT found date with band number from capture_history
 tagged_chicks[c(4019, 4020, 4021), "Capture Date"] <- '2015-07-28'
 
+
 ##############################################################################################
 ##############################################################################################
 #                           cHICK RECAPTURE DATA
@@ -146,7 +152,7 @@ fall_recap <- fall_recap%>% #removed bird that were caught multiple times in the
 
 ############################################################################################
 ############################################################################################
-################  TRAP NIGHTS
+################  Fall TRAP DAYS
 
 #EXCEL FILES
 # Capture History 2000-2017 Fall 
@@ -196,3 +202,60 @@ ggplot(age_ratio, aes(x = Year, y = Count, fill = Age))+
             position = position_dodge(0.5),
             vjust = -0.3, size = 2.5)
   
+
+############################################################################################
+############################################################################################
+################  NEST DATA
+
+#EXCEL FILES
+# NestData_2000_2013
+# Nesting_Date_TTRS_2014_2023
+
+NestData_2000_2013 <- NestData_2000_2013 %>%
+  mutate(`Incubation date` = as.Date(`Incubation date`, format="%m/%d/%Y"))
+NestData_2000_2013 <- NestData_2000_2013 %>%
+  mutate(`Fate date` = as.Date(`Fate date`, format="%m/%d/%Y"))
+
+colnames(NestData_2000_2013) [2] <- "Age"
+colnames(NestData_2000_2013) [7] <- "Clutch Size" 
+colnames(NestData_2000_2013) [9] <- "Fate"
+colnames(NestData_2000_2013) [10] <- "Hatched"
+colnames(NestData_2000_2013) [18] <- "Sex"
+Nest_Data_2000_2023 <- select(NestData_2000_2013, c("Bird ID", "RadioFreq", "Sex", "Age", "Incubation date", "Fate date", "Fate", "Clutch Size", "Hatched", "Comments"))
+
+Nesting_Data_TTRS_2014_2023 <- Nesting_Data_TTRS_2014_2023 %>%
+  mutate(Date_Found= as.Date(Date_Found, format="%m/%d/%Y"))
+Nesting_Data_TTRS_2014_2023 <- Nesting_Data_TTRS_2014_2023 %>%
+  mutate(Fate_Date= as.Date(Fate_Date, format="%m/%d/%Y"))
+
+colnames(Nesting_Data_TTRS_2014_2023)[1] <- "Bird ID"
+colnames(Nesting_Data_TTRS_2014_2023)[2] <- "RadioFreq"
+colnames(Nesting_Data_TTRS_2014_2023)[5] <- "Incubation date"
+colnames(Nesting_Data_TTRS_2014_2023)[6] <- "Fate date"
+colnames(Nesting_Data_TTRS_2014_2023)[8] <- "Clutch Size"
+
+Nest_Data_2000_2023 <- rbind(Nest_Data_2000_2023, Nesting_Data_TTRS_2014_2023)
+
+Nest_Data_2000_2023$Sex[Nest_Data_2000_2023$Sex == 'female'] <- 'F'
+Nest_Data_2000_2023$Sex[Nest_Data_2000_2023$Sex == 'male'] <- 'M'
+Nest_Data_2000_2023$Sex[Nest_Data_2000_2023$Sex == 'f'] <- 'F'
+Nest_Data_2000_2023$Age[Nest_Data_2000_2023$Age == 'adult'] <- 'A'
+Nest_Data_2000_2023$Age[Nest_Data_2000_2023$Age == 'juvenile'] <- 'J'
+Nest_Data_2000_2023$Fate[Nest_Data_2000_2023$Fate == 'Yes'] <- 'H'
+Nest_Data_2000_2023$Fate[Nest_Data_2000_2023$Fate == 'No'] <- 'D'
+
+Nest_Data_2000_2023$Year  <- lubridate::year(Nest_Data_2000_2023$`Incubation date`)
+NEST_FATE <- Nest_Data_2000_2023 %>%
+  group_by(Year,Fate) %>% summarize(Count = n())
+  
+ggplot(NEST_FATE, aes(x = Year, y = Count, fill = Fate))+
+  geom_col(position = position_dodge(0.5)) +
+  scale_x_continuous(breaks = seq(min(2000), max(2023), by = 2),
+                     labels = seq(min(2000), max(2023), by= 2)) +
+  geom_text(aes(label = Count, group = Fate), 
+            position = position_dodge(0.5),
+            vjust = -0.3, size = 2.5)
+
+
+
+
