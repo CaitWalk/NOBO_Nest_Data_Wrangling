@@ -13,6 +13,8 @@ library(readxl)
 # Brood_Info_2000_2017
 # ChickcaptureData_No_dates
 # BroodCaptures2018-2023
+# Capture History 2000-2017 Wing Only
+# TT Data 2017-2023 (has just fall trap data)
 
 
 ChickCaptureData <- ChickCaptureData_No_Dates
@@ -99,7 +101,7 @@ tagged_chicks[c(4019, 4020, 4021), "Capture Date"] <- '2015-07-28'
 
 ##############################################################################################
 ##############################################################################################
-#                           cHICK RECAPTURE DATA
+#                           CHICK RECAPTURE DATA
 #EXCEL FILES
 # Capture History 2000-2017 Wing Only
 # TT Data 2017-2023 (has just fall trap data)

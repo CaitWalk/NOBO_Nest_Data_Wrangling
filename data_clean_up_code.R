@@ -45,7 +45,7 @@ long_test <- juv_cap %>%
     names_sep = '_',
     values_drop_na = TRUE
   )
-                                 
+       View(long_test)                          
 ##########################################################################################
 
 
@@ -223,6 +223,21 @@ ggplot(csum, aes(x = Month, y = cumprop, group = Year, color = factor(Year))) +
        y = "Cumulative Proportion of Hatch") +
   theme_minimal() + facet_wrap(~ Year)
 
+######################
+#for capture histry martix if i lose the ID column
+id_column <- capture_history$id
+
+# Get the other column names excluding 'ID'
+col_names <- colnames(capture_history)[-1]
+
+# Extract the year part from the column names using a regular expression
+sorted_col_names <- col_names[order(as.numeric(sub("^(\\d+).*", "\\1", col_names)))]
+
+# Recreate the data frame with 'ID' as the first column, followed by the sorted columns
+capture_history_ordered <- capture_history[, c("id", sorted_col_names)]
+
+# View the reordered capture history matrix
+print(capture_history_ordered)
 
 
 

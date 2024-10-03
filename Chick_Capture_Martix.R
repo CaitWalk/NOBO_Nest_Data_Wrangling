@@ -47,4 +47,5 @@ capture_history <- chick_data_summarized %>%
 # View the capture history matrix
 print(capture_history)
 
+
   
