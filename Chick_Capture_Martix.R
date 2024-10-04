@@ -47,5 +47,7 @@ capture_history <- chick_data_summarized %>%
 # View the capture history matrix
 print(capture_history)
 
-
+effort <- trapping_effort_00_24%>%
+  group_by(Year) %>%
+  count(`Trap Period`)
   
