@@ -36,7 +36,7 @@ chick_data_summarized <- chick_data_filtered %>%
   group_by(id, year, Season) %>%
   summarize(StatusValue = max(StatusValue), .groups = 'drop')  # Take max to prioritize Trap/Hunt over capture
 
-# Step 4: Pivot the data into a capture history matrix
+#Pivot the data into a capture history matrix
 capture_history <- chick_data_summarized %>%
   pivot_wider(
     names_from = c(year, Season),  # Create columns for year and capture periods
