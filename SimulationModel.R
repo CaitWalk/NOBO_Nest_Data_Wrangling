@@ -1,20 +1,21 @@
+library(R2WinBUGS) #needed for cjs. code
+library(R2jags) #needed to run the jags code
 library(ggplot2)
 library(tidyr)
 library(dplyr)
+library(coda) #required for rjags package
+library(rjags)
+#unsure why added these packages
 library(ape)
 library(tensorA)
 library(corpcor)
 library(cubature)
 library(MCMCglmm)
 library(lattice)
-library(coda)
-library(rjags)
-library(R2WinBUGS)
-library(R2jags)
 
 
   # N = represents the number of females alive at the start of the breeding season
-  # fn = represents the probability that a female nests
+  # nest_initiate = represents the probability that an individual nests
   # ns = represents the probability that a nest is successful
   # cs = is the average clutch size
   # ha = the number of eggs that hatch out/total successful clutch count
@@ -23,28 +24,37 @@ library(R2jags)
 #################################################################################
 num.iterations <- 1000    #number of times to run the code 
 
-breeding_sample_size = 200
-nest_success_prob = 0.3
+breeding_sample_size = 120
+nest_success_prob = 0.57
 hatch_prob = 0.85
 genotype_success = 0.95
-capture_prob = 0.10
+capture_prob = 0.20
 
 total_recap = numeric()
 
 # loop to run recapture loop 
 for (iterations in 1:num.iterations) {
-  fn = numeric()
+  nest_initiate = numeric()
   ns = numeric()
   cs = numeric()
   chicks = numeric()
   ic= numeric()  #initical capture
   recap = numeric()
   af = numeric()
+  sex = character() #stores sex as male or female
   
   #loop to calculate recapture numbers
   for (i in 1:breeding_sample_size) {
-    fn [i] = rpois(1,1.1)     #nests/female
-    ns [i] = rbinom(1, fn[i], nest_success_prob)  #nest success
+    nest_initiate [i] = rpois(1,1.1)     #nests/individual
+    
+    #randomly assign sex
+    sex[i] = ifelse(runif(1) < 0.6, "female", "male")
+    #sex-specific nesting values
+    female_nest = 0.88
+    male_nest = 0.11
+    sex_nest = ifelse(sex == "female", female_nest, male_nest)
+    
+    ns [i] = rbinom(1, nest_initiate[i], nest_success_prob)  #nest success
     cs [i] = rpois(1, 12)    #clutch size
     chicks [i] = rbinom(1, ns[i] * cs, hatch_prob)  #number of chicks hatched
     ic [i] = rbinom(1, chicks[i], genotype_success)   #number of eggs genotyped
@@ -55,12 +65,10 @@ for (iterations in 1:num.iterations) {
   total_recap[iterations] = sum(recap)
 }
 
-
-print(ic)
-sum(ic)
+print(recap)
 #################################################################################
 ##      Capture history matrix
-#https://www.vogelwarte.ch/modx/assets/files/publications/BPA/BPA%20with%20JAGS.txt
+#https://www.vogelwarte.ch/en/research/population-biology/book-bpa/
 # Define parameter values
 n.occasions <- 3                   # Number of capture occasions
 marked <- sum(ic)   # number of ic from above code (cant find a way to link btw code--hard code the number in)
@@ -171,4 +179,52 @@ cjs.c.c <- jags(jags.data, inits, parameters, "cjs-c-c.jags", n.chains = nc, n.t
 
 # Summarize posteriors
 print(cjs.c.c, digits = 3)
+
+##############################################
+##############################################
+# plots from simulated data for TWS poster 
+
+#simulation that changed number of radio birds and .10 cap prob
+bird_df <- as.data.frame(sim_bird_no)
+bird_data_mean_CI<- bird_df %>%
+  summarise(across(everything(), list(mean = ~mean(.), 
+                                      lower_ci = ~mean(.) - 1.96 * sd(.)/sqrt(n()), 
+                                      upper_ci = ~mean(.) + 1.96 * sd(.)/sqrt(n()))))
+bird_data <- bird_data_mean_CI %>% 
+  pivot_longer(cols = everything(), 
+               names_to = c("Hens", "Stat"), 
+               names_pattern = "(\\d+)_(.*)") %>%
+  pivot_wider(names_from = Stat, values_from = value)
+bird_data$Hens <- factor(bird_data$Hens, levels = c(50,100,150,200,250,300))
+
+#simulated data that changed capture probability with 150 birds 
+capture <- as.data.frame(cap_prob)
+capture_mean_CI<- capture %>%
+  summarise(across(everything(), list(mean = ~mean(.), 
+                                      lower_ci = ~mean(.) - 1.96 * sd(.)/sqrt(n()), 
+                                      upper_ci = ~mean(.) + 1.96 * sd(.)/sqrt(n()))))
+capture_data <- capture_mean_CI %>% 
+  pivot_longer(cols = everything(), 
+               names_to = c("Probability", "Stat"), 
+               names_pattern = "(\\d+\\.\\d+)_(.*)") %>%
+  pivot_wider(names_from = Stat, values_from = value)
+capture_data$Probability <- factor(capture_data$Probability, levels = c(0.03,0.05,0.1,0.15,0.2))
+
+#plots of the two data sets 
+ggplot(bird_data, aes(x = Hens, y = mean)) +
+  geom_point(size = 3, color = "blue") +  # Plot the means as points
+  geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci), width = 0.2, color = "black") +  # Add error bars
+  geom_hline(yintercept = 0.45, linetype = "dashed", color = "red", size = 0.5) +  # Add horizontal line at 0.45
+  scale_y_continuous(name = "Average Survival", limits = c(0,1)) +
+  xlab("Radioed Birds")+
+  theme_classic()  
+
+ggplot(capture_data, aes(x = Probability, y = mean)) +
+  geom_point(size = 3, color = "blue") +  # Plot the means as points
+  geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci), width = 0.2, color = "black") +  # Add error bars
+  geom_hline(yintercept = 0.45, linetype = "dashed", color = "red", size = 0.5) +  # Add horizontal line at 0.45
+  scale_y_continuous(name = "Average Survival", limits = c(0,1)) +
+  xlab("Capture Probability")+
+  theme_classic()
+
 

@@ -43,6 +43,10 @@ capture_history <- chick_data_summarized %>%
     values_from = StatusValue,            # Use the summarized status values
     values_fill = list(StatusValue = 0)   # Fill missing values with 0
   )
+####how to make columns in order? !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+cap.hist <- capture_history%>%
+  group_by(id)%>%
+  unite("ch", 2:tail(names(.),1), sep = "")
 
 # View the capture history matrix
 print(capture_history)
