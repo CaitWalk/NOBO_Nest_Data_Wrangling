@@ -8,62 +8,21 @@ library(ggplot2)
   #NestData_2000_2023
   #Capture_history_2000_2017
 
-######## data manipulation 
-#format Bird ID
-NestingTBL$`Bird ID` <- as.character(NestingTBL$`Bird ID`)
-Capture_History_2000_2017$`Bird ID` <- as.character(Capture_History_2000_2017$`Bird ID`)
-Nesting_Data_2024$`Bird ID` <- as.character(Nesting_Data_2024$`Bird ID`)
-
-#format dates
-NestingTBL$`Incubation date` <- as.Date(NestingTBL$`Incubation date`, format = "%m/%d/%Y")
-NestingTBL$`Fate date` <- as.Date(NestingTBL$`Fate date`, format = "%m/%d/%Y")
-Nesting_Data_2024$`Incubation date` <- as.Date(Nesting_Data_2024$`Incubation date`, format = "%m/%d/%Y")
-Nesting_Data_2024$`Fate date` <- as.Date(Nesting_Data_2024$`Fate date`, format = "%m/%d/%Y")
-
-#remove data
-NestingTBL <- NestingTBL %>%
-  filter(year(`Incubation date`) !=1999) #removed year 1999 data
-
-NestingTBL <- NestingTBL[, -c(3,5,6,8,11,15,16,17,18,19,20,21)] #removed unwanted columns
-
-#format sex informaiton 
-NestData_2000_2023$SEX[NestData_2000_2023$SEX == 'F'] <- 'female'
-NestData_2000_2023$SEX[NestData_2000_2023$SEX == 'f'] <- 'female'
-NestData_2000_2023$SEX[NestData_2000_2023$SEX == 'Female'] <- 'female'
-NestData_2000_2023$SEX[NestData_2000_2023$SEX == 'M'] <- 'male'
-NestData_2000_2023$SEX[NestData_2000_2023$SEX == 'm'] <- 'male'
-NestData_2000_2023$SEX[NestData_2000_2023$SEX == 'Male'] <- 'male'
-
-Nesting_Data_2024$Sex[Nesting_Data_2024$Sex == 'F'] <- 'female'
-Nesting_Data_2024$Sex[Nesting_Data_2024$Sex == 'M'] <- 'male'
-
-#change format 2024 successful data
-Nesting_Data_2024$Successful[Nesting_Data_2024$Successful == 'U'] <- 'No'
-Nesting_Data_2024$Successful[Nesting_Data_2024$Successful == 'A'] <- 'No'
-Nesting_Data_2024$Successful[Nesting_Data_2024$Successful == 'S'] <- 'Yes'
+  # Nests_2000_2024
 
 ######################################################################################################################################  
-###################################################. HELP JOINING W/OUT CREATING DUPLICATES OR HAVING NA
-#join dataframes together
-NestingTBL <- NestingTBL%>%
-  left_join(NestData_2000_2023 %>% select(`Bird ID`, SEX), by = "Bird ID", relationship = "many-to-many")
-  
-NestingTBL <- NestingTBL %>%
-  mutate(Sex = coalesce(SEX))%>%
-  select(-SEX)
 
-NestingTBL <- NestingTBL %>% relocate('Sex', .after = 'Bird ID')
-
-#add 2024 nesting data
-ALL_NESTS <- rbind(NestingTBL, Nesting_Data_2024)
-
-ALL_NESTS <- ALL_NESTS %>%
+Nests_2000_2024 <- Nests_2000_2024 %>%
   mutate(Year = year(ymd(`Incubation date`)))
-ALL_NESTS <- ALL_NESTS %>%
-  mutate(Hatch_Rate = ifelse(Successful == "Yes", (`Number hatched`/`Initial clutch size`), NA))
 
-##################
-summary_data <- ALL_NESTS %>%
+Nests_2000_2024 <- Nests_2000_2024 %>%
+  mutate(Hatch_Rate = case_when(
+    Successful == "Yes" & `Number hatched` >`Initial clutch size` ~ 1,  #hatch rate 1 if eggs added
+    Successful == "Yes" ~ `Number hatched` / `Initial clutch size`,     #else, calc hatch rate 
+    TRUE ~ NA_real_                                                     #set as NA if not successful
+    ))
+
+summary_data <- Nests_2000_2024 %>%
   group_by(Year) %>%
   summarize(
     Successful_Nests = sum(Successful == "Yes", na.rm = TRUE),
@@ -77,7 +36,7 @@ summary_data <- ALL_NESTS %>%
 ######################################################################################################################################  
 ###################################################
 #dataset for nest success probabiliy with CI
-success_prob <- ALL_NESTS %>%
+success_prob <- Nests_2000_2024 %>%
   group_by(Year) %>%
   summarize(
     Total_Nests = n(),
@@ -91,7 +50,7 @@ success_prob <- ALL_NESTS %>%
 success_avg <- colMeans(success_prob[,-1])
 success_w_average <- rbind(success_prob, c("Average", success_avg))
 
-########nest success probability with CI
+####nest success probability with CI
 ggplot(success_prob, aes(x = Year, y = Probability_Nest_Success)) +
   geom_point(size = 3, color = "blue") +  # Plot points for probabilities
   geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.2, color = "blue") +  # Add error bars
@@ -103,7 +62,7 @@ ggplot(success_prob, aes(x = Year, y = Probability_Nest_Success)) +
   ) +
   theme_minimal(base_size = 14)
 
-########nest success probability with SD
+###nest success probability with SD
 ggplot(success_prob, aes(x = Year, y = Probability_Nest_Success)) +
   geom_point(color = "cornflowerblue", size = 3) +
   geom_errorbar(aes(ymin = Probability_Nest_Success - SD_Successful,
@@ -117,9 +76,8 @@ ggplot(success_prob, aes(x = Year, y = Probability_Nest_Success)) +
   theme_minimal()
 
 ######################################################################################################################################  
-###################################### hatchability 
-#NEED HELP!!!!!!!!!!!!!
-summary_hatchability <- ALL_NESTS %>%
+###################################### hatchability  #NEED HELP!!!!!!!!!!!!!
+summary_hatchability <- Nests_2000_2024 %>%
   filter(!is.na(Hatch_Rate)) %>%
   group_by(Year) %>%
   summarize(
@@ -131,7 +89,7 @@ summary_hatchability <- ALL_NESTS %>%
     Upper_CI = Mean_Hatchability + qt(0.975, df = N - 1) * SE  # Upper 95% CI
   )
 
-##########plot with CI as the error bars 
+###plot with CI as the error bars 
 ggplot(summary_hatchability, aes(x = Year, y = Mean_Hatchability)) +
   geom_point(size = 3, color = "darkgreen") +  # Mean hatchability points
   geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.2, color = "black") +  # Error bars for CI
@@ -143,7 +101,7 @@ ggplot(summary_hatchability, aes(x = Year, y = Mean_Hatchability)) +
   ) +
   theme_minimal(base_size = 14)
 
-############ plot with SE as the error bars 
+### plot with SE as the error bars 
 ggplot(summary_hatchability, aes(x = Year, y = Mean_Hatchability)) +
   geom_point(size = 3, color = "darkgreen") +  # Mean hatchability points
   geom_errorbar(aes(ymin = Mean_Hatchability - SD_Hatchability , 
@@ -159,7 +117,7 @@ ggplot(summary_hatchability, aes(x = Year, y = Mean_Hatchability)) +
 
 ######################################################################################################################################  
 ##################################### nest sex information
-nest_proportions <- ALL_NESTS %>%
+nest_proportions <- Nests_2000_2024 %>%
   group_by(Year, Sex) %>%
   summarise(count = n(), .groups = "drop") %>%
   group_by(Year) %>%
@@ -170,7 +128,7 @@ calculate_ci <- function(count, total, conf_level = 0.95) {
   binom_ci <- binom.test(count, total, conf.level = conf_level)
   return(c(lower = binom_ci$conf.int[1], upper = binom_ci$conf.int[2]))
 }
-sex_dist <- ALL_NESTS %>%
+sex_dist <- Nests_2000_2024 %>%
   group_by(Year)%>%
   summarize(
     Total_Nests = n(),
@@ -211,7 +169,3 @@ ggplot(sex_dist, aes(x = Year)) +
     legend.position = "none",  # Optional: Hide legend
     axis.text.x = element_text(angle = 45, hjust = 1)  # Angle the x-axis labels
   )
-
-
-
-ggplot()
