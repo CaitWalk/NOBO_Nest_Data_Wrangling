@@ -13,6 +13,10 @@ library(ggplot2)
 ######################################################################################################################################  
 
 Nests_2000_2024 <- Nests_2000_2024 %>%
+  mutate(`Incubation date` = as.Date(`Incubation date`, format="%Y/%m/%d")) %>%
+  mutate(`Fate date` = as.Date(`Fate date`, format="%Y/%m/%d"))
+
+Nests_2000_2024 <- Nests_2000_2024 %>%
   mutate(Year = year(ymd(`Incubation date`)))
 
 Nests_2000_2024 <- Nests_2000_2024 %>%
@@ -49,12 +53,14 @@ success_prob <- Nests_2000_2024 %>%
 #adding average row at the end of the table
 success_avg <- colMeans(success_prob[,-1])
 success_w_average <- rbind(success_prob, c("Average", success_avg))
+avg_success <- mean(success_prob$Probability_Nest_Success)
 
 ####nest success probability with CI
 ggplot(success_prob, aes(x = Year, y = Probability_Nest_Success)) +
   geom_point(size = 3, color = "blue") +  # Plot points for probabilities
   geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.2, color = "blue") +  # Add error bars
-  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +  # Show y-axis in percentage
+  geom_hline(yintercept = avg_success, color = 'red', linetype = "dashed", size = 1) +
+  scale_y_continuous(limits = c(0, 1)) +  # Show y-axis in percentage
   labs(
     title = "Probability of Nest Success with 95% CI",
     x = "Year",
@@ -68,12 +74,14 @@ ggplot(success_prob, aes(x = Year, y = Probability_Nest_Success)) +
   geom_errorbar(aes(ymin = Probability_Nest_Success - SD_Successful,
                     ymax = Probability_Nest_Success + SD_Successful),
                 width = 0.3, color = "black") +
+  geom_hline(yintercept = avg_success, color = 'red', linetype = "dashed", size = 1) +
+  scale_y_continuous( limits = c(0, 1)) +  # Show y-axis in percentage
   labs(
     title = "Probability of Nest Success with SD",
     x = "Year",
     y = "Probability of Nest Success"
   ) +
-  theme_minimal()
+  theme_minimal(base_size = 14)
 
 ######################################################################################################################################  
 ###################################### hatchability  #NEED HELP!!!!!!!!!!!!!
@@ -89,11 +97,14 @@ summary_hatchability <- Nests_2000_2024 %>%
     Upper_CI = Mean_Hatchability + qt(0.975, df = N - 1) * SE  # Upper 95% CI
   )
 
+avg_hatch <- mean(summary_hatchability$Mean_Hatchability)
+
 ###plot with CI as the error bars 
 ggplot(summary_hatchability, aes(x = Year, y = Mean_Hatchability)) +
   geom_point(size = 3, color = "darkgreen") +  # Mean hatchability points
   geom_errorbar(aes(ymin = Lower_CI, ymax = Upper_CI), width = 0.2, color = "black") +  # Error bars for CI
-  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +  # y-axis in percentage
+  geom_hline(yintercept = avg_hatch, color = 'red', linetype = "dashed", size = 1) +
+  scale_y_continuous(limits = c(0, 1)) +  # y-axis in percentage
   labs(
     title = "Mean Hatchability with 95% CI",
     x = "Year",
@@ -107,7 +118,8 @@ ggplot(summary_hatchability, aes(x = Year, y = Mean_Hatchability)) +
   geom_errorbar(aes(ymin = Mean_Hatchability - SD_Hatchability , 
                     ymax = Mean_Hatchability + SD_Hatchability ), 
                 width = 0.2, color = "black") +  # Error bars
-  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +  # y-axis in percentage
+  geom_hline(yintercept = avg_hatch, color = 'red', linetype = "dashed", size = 1) +
+  scale_y_continuous( limits = c(0, 1)) +  # y-axis in percentage
   labs(
     title = "Mean Hatchability with SD",
     x = "Year",
@@ -169,3 +181,4 @@ ggplot(sex_dist, aes(x = Year)) +
     legend.position = "none",  # Optional: Hide legend
     axis.text.x = element_text(angle = 45, hjust = 1)  # Angle the x-axis labels
   )
+
