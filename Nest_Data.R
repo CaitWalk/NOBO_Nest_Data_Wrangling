@@ -50,6 +50,8 @@ success_prob <- Nests_2000_2024 %>%
 success_avg <- colMeans(success_prob[,-1])
 success_w_average <- rbind(success_prob, c("Average", success_avg))
 
+range(success_prob$Probability_Nest_Success)
+
 ####nest success probability with CI
 ggplot(success_prob, aes(x = Year, y = Probability_Nest_Success)) +
   geom_point(size = 3, color = "blue") +  # Plot points for probabilities
@@ -88,6 +90,11 @@ summary_hatchability <- Nests_2000_2024 %>%
     Lower_CI = Mean_Hatchability - qt(0.975, df = N - 1) * SE, # Lower 95% CI
     Upper_CI = Mean_Hatchability + qt(0.975, df = N - 1) * SE  # Upper 95% CI
   )
+
+#adding average row at the end of the table
+hatch_avg <- colMeans(summary_hatchability[,-1])
+hatchability_w_avg <- rbind(summary_hatchability, c("Average", hatch_avg))
+
 
 ###plot with CI as the error bars 
 ggplot(summary_hatchability, aes(x = Year, y = Mean_Hatchability)) +

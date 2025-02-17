@@ -15,7 +15,7 @@ library(lattice)
 
 
   # N = represents the number of females alive at the start of the breeding season
-  # nest_initiate = represents the probability that an individual nests
+  # ni = represents the probability that an individual initiates a nests
   # ns = represents the probability that a nest is successful
   # cs = is the average clutch size
   # ha = the number of eggs that hatch out/total successful clutch count
@@ -34,7 +34,7 @@ total_recap = numeric()
 
 # loop to run recapture loop 
 for (iterations in 1:num.iterations) {
-  nest_initiate = numeric()
+  ni = numeric()
   ns = numeric()
   cs = numeric()
   chicks = numeric()
@@ -45,7 +45,7 @@ for (iterations in 1:num.iterations) {
   
   #loop to calculate recapture numbers
   for (i in 1:breeding_sample_size) {
-    nest_initiate [i] = rpois(1,1.1)     #nests/individual
+    ni [i] = rpois(1,1.1)     #nests/individual
     
     #randomly assign sex
     sex[i] = ifelse(runif(1) < 0.6, "female", "male")
@@ -54,7 +54,7 @@ for (iterations in 1:num.iterations) {
     male_nest = 0.11
     sex_nest = ifelse(sex == "female", female_nest, male_nest)
     
-    ns [i] = rbinom(1, nest_initiate[i], nest_success_prob)  #nest success
+    ns [i] = rbinom(1, ni[i], nest_success_prob)  #nest success
     cs [i] = rpois(1, 12)    #clutch size
     chicks [i] = rbinom(1, ns[i] * cs, hatch_prob)  #number of chicks hatched
     ic [i] = rbinom(1, chicks[i], genotype_success)   #number of eggs genotyped
