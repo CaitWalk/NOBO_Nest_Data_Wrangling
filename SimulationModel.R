@@ -12,68 +12,103 @@ library(corpcor)
 library(cubature)
 library(MCMCglmm)
 library(lattice)
+library(extraDistr)
 
-
-  # N = represents the number of females alive at the start of the breeding season
+  # N = represents the number of individuals alive at the start of the breeding season
   # ni = represents the probability that an individual initiates a nests
   # ns = represents the probability that a nest is successful
   # cs = is the average clutch size
   # ha = the number of eggs that hatch out/total successful clutch count
   # gs = is the genotyping success rate for eggshells 
 
+
 #################################################################################
 num.iterations <- 1000    #number of times to run the code 
 
-breeding_sample_size = 120
-nest_success_prob = 0.57
+# to test model sensitivity will vary BPS, nest success, nest initiation, recapture and harvest rates 
+n.breed = 120
+nest_succ_prob = 0.57
 hatch_prob = 0.85
-genotype_success = 0.95
-capture_prob = 0.20
+geno_egg = 0.95
+geno_feather = 0.99
+fall_cap_prob = 0.197
+winter_cap_prob = 0.521
+harvest_prob = 0.038
 
+total_marked = numeric()
 total_recap = numeric()
 
 # loop to run recapture loop 
 for (iterations in 1:num.iterations) {
-  ni = numeric()
-  ns = numeric()
-  cs = numeric()
+  ind_nest = numeric()
+  nest_succ = numeric()
+  clutch = numeric()
   chicks = numeric()
-  ic= numeric()  #initical capture
-  recap = numeric()
-  af = numeric()
+  summ_geno = numeric() 
+  recruit = numeric()
+  fall_recap = numeric()
+  fall_geno = numeric()
+  winter_alive = numeric()
+  winter_recap = numeric()
+  winter_geno = numeric()
+  harvest = numeric()
+  harvest_geno = numeric()
+  #daily_winter_survival
+  
   sex = character() #stores sex as male or female
   
   #loop to calculate recapture numbers
-  for (i in 1:breeding_sample_size) {
-    ni [i] = rpois(1,1.1)     #nests/individual
-    
+  for (i in 1:n.breed) {
+    #ind_nest [i] = rpois(1,1.1) #nests/individual <<<< need to work on this !!!!!!!!! gives wrong distribution
+    ind_nest[i] = (rcat(1, init_avg_f)-1)
     #randomly assign sex
-    sex[i] = ifelse(runif(1) < 0.6, "female", "male")
-    #sex-specific nesting values
-    female_nest = 0.88
-    male_nest = 0.11
-    sex_nest = ifelse(sex == "female", female_nest, male_nest)
+    #sex[i] = ifelse(runif(1) < 0.6, "female", "male")
+    #sex-specific nest initiation values
+    #female_nest = 0.71
+    #male_nest = 0.29
+    #sex_nest = ifelse(sex == "female", female_nest, male_nest)
     
-    ns [i] = rbinom(1, ni[i], nest_success_prob)  #nest success
-    cs [i] = rpois(1, 12)    #clutch size
-    chicks [i] = rbinom(1, ns[i] * cs, hatch_prob)  #number of chicks hatched
-    ic [i] = rbinom(1, chicks[i], genotype_success)   #number of eggs genotyped
-    af [i] = rbinom(1, ic[i], 0.4)    #number of chicks alive in the fall
-    recap [i] = rbinom(1, af[i], capture_prob)    #number recaptured in the fall
+    nest_succ [i] = rbinom(1, ind_nest[i], nest_succ_prob)    #nest success
+    clutch [i] = rpois(1, 12)                                 #clutch size
+    chicks [i] = rpois(1, nest_succ[i] * clutch[i]*hatch_prob)    #number of chicks hatched
+    summ_geno [i] = rbinom(1, chicks[i], geno_egg)            #number of  hatched eggs genotyped
+    recruit [i] = rbinom(1, chicks[i], 0.4)                #number of chicks alive in the fall
+    
+    #fall 
+    fall_recap [i] = rbinom(1, recruit[i], fall_cap_prob)      #number recaptured in the fall
+    fall_geno [i] = rbinom(1, fall_recap[i], geno_feather)    #number of trapped birds succ. genotyped
+    
+    #winter
+    winter_alive [i] = rbinom(1, recruit[i], 0.7355258) #daily winter survival for halfway through winter based on Sisson 2009 0.541 over winter survival
+    winter_recap [i] = rbinom(1, winter_alive[i], winter_cap_prob)
+    winter_geno [i] = rbinom(1, winter_recap[i], geno_feather) 
+    
+    harvest[i] = rbinom(1, recruit[i], harvest_prob)        #number of birds harvested 
+    harvest_geno [i] = rbinom(1, harvest[i], geno_feather)  #number of harvested birds succ. genotyped 
   }
-  
-  total_recap[iterations] = sum(recap)
+ 
+  total_marked[iterations] = sum(summ_geno)
+  total_recap[iterations] = sum(fall_geno) + sum(winter_geno) + sum(harvest_geno)
+
 }
 
-print(recap)
+print(total_marked)
+print(total_recap)
+
+recap_rate_sim = total_recap / total_marked
+
+print(recap_rate_sim)
+mean(recap_rate_sim)
+
+
 #################################################################################
 ##      Capture history matrix
 #https://www.vogelwarte.ch/en/research/population-biology/book-bpa/
 # Define parameter values
-n.occasions <- 3                   # Number of capture occasions
-marked <- sum(ic)   # number of ic from above code (cant find a way to link btw code--hard code the number in)
-phi <- rep(0.45, n.occasions-1)
-p <- rep(0.2, n.occasions-1)
+n.occasions <- 3                    # Number of capture occasions
+marked <- sum(summ_geno)            # number of ic from above code (cant find a way to link btw code--hard code the number in)
+phi <- rep(0.45, n.occasions-1)     # survival 
+p <- rep(0.2, n.occasions-1)        # recapture
 
 # Define matrices with survival and recapture probabilities
 PHI <- matrix(phi, ncol = n.occasions-1, nrow = sum(marked))
