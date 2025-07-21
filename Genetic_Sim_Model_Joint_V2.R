@@ -1,15 +1,6 @@
-library(jagsUI)
-library(extraDistr)
-library(ggplot2)
-library(tidyr)
-library(dplyr)
-
-################################################################################
-#          Simulation model for estimating chick survival using WINGTAG
-################################################################################
 # Code for simulating and analyzing northern bobwhite chick survival data. Simulating
 #   a 3-year study. Every breeding season a certain number of chicks are genotyped
-#   in each month, can be recaptured or harvested later based on survival and detection
+#   in each month, can be recaptured or harvested later based on survial and detection
 #   parameters. Also banding a certain number of other birds each fall and spring to
 #   estimate survival and seasonal capture probability.
 
@@ -18,7 +9,7 @@ library(dplyr)
 # Summer goes from April - September, winter from October - March
 require(parallel)
 library(extraDistr)
-
+library(nimble)
 
 # PARAMETERS ---------------------------------- 
 num.iterations <- 100 # Number of iterations to run the simulation
@@ -55,7 +46,7 @@ nc <- 3
 # Simulating Data --------------------------------------------------------------
 
 # Storage for scenario results
-wing_scenario_results <- vector("list", nrow(SimScenarios_ChickSuv))
+genetic_scenario_results <- vector("list", nrow(SimScenarios_ChickSuv))
 
 # Looping through scenarios
 for(S in 1:nrow(SimScenarios_ChickSuv)) {
@@ -134,17 +125,14 @@ for(S in 1:nrow(SimScenarios_ChickSuv)) {
   dimnames(summary_stats) <- list(1:num.iterations,c("marked", "fall_recaptures", "winter_recaptures", "harvests"),paste0("Year",1:n.years))
   posterior_summary_list <- vector("list", num.iterations)
   
-  #iteration loop
   for(v in 1:num.iterations){
-    tot_brood_cap_chicks<- rep(NA, times=n.years) # Number of chicks captured in each year
-    n_marked_total <- rep(NA, times=n.years) # Number of total birds marked in each year
+    
+    n_marked_chick <- n_marked_total <- rep(NA, times=n.years) # Number of chicks and total birds, respectively, marked in each year
     release_occasions <- release_year <- c() # release_occasions gives first occasion for each chick, release_year gives year of first capture for each chick
-  
-    # Simulating the number of chicks captured in each year
+    
     for(y in 1:n.years){
       
       marked_chicks <- integer(0)
-      chicks_captured <- integer(0)
       
       #Females
       for(k in seq_len(n_females)){
@@ -154,12 +142,13 @@ for(S in 1:nrow(SimScenarios_ChickSuv)) {
         clutch <- rpois(1, 12) # Average clutch size, could do truncated normal to bound this
         chicks <- rpois(1, nest_succ * clutch * hatch_prob) # Total number of chicks produced
         
-        #chick capture rates
-        chicks_captured <- rpois(1, chicks*exp(-1.12435))# Number of chicks captured, based on a model from the data
-        if (chicks_captured > 0) {
-          marked_chicks <- c(marked_chicks, rep(k, chicks_captured))  # marked_chicks is a vector giving the adult ID for every chick genotyped
+        if (chicks > 0) {
+          geno_chicks <- rbinom(1, chicks, geno_egg) # Total number of chicks genotyped
+          if (geno_chicks > 0) {
+            marked_chicks <- c(marked_chicks, rep(k, geno_chicks)) # marked_chicks is a vector giving the adult ID for every chick genotyped
+          }
         }
-      }
+      } #end female nest loop
       
       #Males
       for(k in seq_len(n_males)){
@@ -168,18 +157,19 @@ for(S in 1:nrow(SimScenarios_ChickSuv)) {
         nest_succ <- rbinom(1, ind_nest, nest_succ_prob) # Number of successful nests
         clutch <- rpois(1, 12) # Average clutch size, could do truncated normal to bound this
         chicks <- rpois(1, nest_succ * clutch * hatch_prob) # Total number of chicks produced
-        
-        #chick capture rates
-        chicks_captured <- rpois(1, chicks*exp(-1.12435))# Number of chicks captured, based on a model from the data
-        if (chicks_captured > 0) {
-          marked_chicks <- c(marked_chicks, rep(k, chicks_captured))  # marked_chicks is a vector giving the adult ID for every chick genotyped
+      
+      if (chicks > 0) {
+        geno_chicks <- rbinom(1, chicks, geno_egg) # Total number of chicks genotyped
+        if (geno_chicks > 0) {
+          marked_chicks <- c(marked_chicks, rep(k, geno_chicks)) # marked_chicks is a vector giving the adult ID for every chick genotyped
         }
       }
-      
-      tot_brood_cap_chicks[y] <- length(marked_chicks)
+    } #end male nest loop
+     
+       n_marked_chick[y] <- length(marked_chicks)
       
       # Assign cohorts to main group
-      cohort_release <- t(rmultinom(1, size = tot_brood_cap_chicks[y], prob = probabilities[y,])) # Assigning period each individual released in
+      cohort_release <- t(rmultinom(1, size = n_marked_chick[y], prob = probabilities[y,])) # Assigning period each individual released in
       released_chick <- rep(1:n.occasions, cohort_release[1, ])
       
       # Adding in extra captured adults. If last year, don't need to bother releasing birds in the last period
@@ -200,21 +190,21 @@ for(S in 1:nrow(SimScenarios_ChickSuv)) {
                         rep(y, n_marked_total[y]))
     }
     N_tot <- sum(n_marked_total)
-  
-  
-  summary_stats[v,1,] <- tot_brood_cap_chicks
-  
-  
-  # Have 3 state variables:
-  #   1: Alive
-  #   2: Dead from natural causes
-  #   3: Dead from harvest
-  # Have 3 observation variables:
-  #   1: Observed alive
-  #   2: Not observed
-  #   3: Observed dead (harvested)
-  
-  
+    
+    
+    summary_stats[v,1,] <- n_marked_chick
+    
+    
+    # Have 3 state variables:
+    #   1: Alive
+    #   2: Dead from natural causes
+    #   3: Dead from harvest
+    # Have 3 observation variables:
+    #   1: Observed alive
+    #   2: Not observed
+    #   3: Observed dead (harvested)
+    
+    
     # State transition matrix goes from t to t+1. Have to index by year marked
     ps <- array(NA, dim=c(3,3,n.occasions-1,n.years))
     for(y in 1:n.years){
@@ -279,35 +269,18 @@ for(S in 1:nrow(SimScenarios_ChickSuv)) {
         }
       }
     }
-    #made changes in this loop to account for 0s in the capture history
+    
     for(b in 1:n.years){
       ch.temp <- ch[release_year == b,]
-      ch.temp <- ch.temp[1:tot_brood_cap_chicks[b],]
-      # Fall recaptures
-      tab.cap.f <- table(ch.temp[, capture_probs == fall_cap_prob])
-      summary_stats[v, 2, b] <- if ("1" %in% names(tab.cap.f)) {
-        unname(tab.cap.f["1"])
-      } else {
-        0
-      }
-      
-      # Winter recaptures
-      tab.cap.w <- table(ch.temp[, capture_probs == winter_cap_prob])
-      summary_stats[v, 3, b] <- if ("1" %in% names(tab.cap.w)) {
-        unname(tab.cap.w["1"])
-      } else {
-        0
-      }
-      
-      # Harvests
+      ch.temp <- ch.temp[1:n_marked_chick[b],]
+      tab.cap.f <- table(ch.temp[,capture_probs==fall_cap_prob])
+      summary_stats[v,2,b] <- unname(tab.cap.f[names(tab.cap.f)==1])
+      tab.cap.w <- table(ch.temp[,capture_probs==winter_cap_prob])
+      summary_stats[v,3,b] <- unname(tab.cap.w[names(tab.cap.w)==1])
       tab.harv <- table(ch.temp)
-      summary_stats[v, 4, b] <- if ("3" %in% names(tab.harv)) {
-        unname(tab.harv["3"])
-      } else {
-        0
-      }
+      summary_stats[v,4,b] <- unname(tab.harv[names(tab.harv)==3])
     }
-  
+    
     # Statistical Model -----------------------------------------------------------
     
     # Running in parallel
@@ -416,9 +389,9 @@ for(S in 1:nrow(SimScenarios_ChickSuv)) {
     
     
     this_cluster <- makeCluster(3) # Creating cluster
-    
-    NOBO_chick_sim <- parLapply(cl = this_cluster, X = 1:nc, 
-                                fun = NOBO_sim_MCMC, 
+  
+    NOBO_chick_sim <- parLapply(cl = this_cluster, X = 1:nc,
+                                fun = NOBO_sim_MCMC,
                                 mod.data = mod.data,
                                 mod.constants = mod.constants,
                                 params = params,
@@ -426,18 +399,20 @@ for(S in 1:nrow(SimScenarios_ChickSuv)) {
                                 ni = ni,
                                 nb = nb,
                                 nt = nt)
-    
+  
     stopCluster(this_cluster)
     
     posterior_summary_list[[v]] <- NOBO_chick_sim
+    
   }# END iteration loop
   
-  # SAVE results of this scenario: 
-  wing_scenario_results[[S]] <- list(
+  # SAVE results of this scenario:
+  genetic_scenario_results[[S]] <- list(
     scenario = scenario,
     summary_stats = summary_stats,
     posterior_samples = posterior_summary_list
   )
-  
-}# END  scenario loop
+
+}#END scenario loop
+
 
