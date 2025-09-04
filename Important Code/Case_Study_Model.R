@@ -1,10 +1,15 @@
 ## Model for the case study part where I supply real data from TT and LP to my
 #  model from the simulations
 
-
 # Load packages
 library(nimble)
 library(parallel)
+library(extraDistr)
+library(dplyr)
+
+#load in real data
+file_path <- "path/to/your/Real_ch.csv"  # <-- Update with your actual file path!!!!!
+Real_ch <- read.csv(file_path)
 
 # Have 3 state variables:
 #   1: Alive
@@ -20,9 +25,9 @@ library(parallel)
 winter_dsr <- 0.9966302
 summer_dsr <- 0.9951 # Rough values of adult breeding dsr from Albany
 
-ni <- 2500
+ni <- 25000
 nt <- 1
-nb <- 500
+nb <- 5000
 nc <- 3
 
 #test data subset 
